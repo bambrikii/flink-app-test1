@@ -1,0 +1,3 @@
+rootProject.name = "flink-app-test1"
+
+include "flink-app-test1"

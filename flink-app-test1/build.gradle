@@ -1,0 +1,16 @@
+apply plugin: "java"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    compile("org.apache.flink:flink-java:$flinkVersion")
+    compile("org.apache.flink:flink-streaming-java_2.11:$flinkVersion")
+
+    compile("org.slf4j:slf4j-log4j12:1.7.21")
+
+    compileOnly("org.projectlombok:lombok:$lombokVersion")
+    annotationProcessor("org.projectlombok:lombok:$lombokVersion")
+
+    testCompile "junit:junit:4.11"
+}

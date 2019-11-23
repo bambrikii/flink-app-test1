@@ -1,0 +1,9 @@
+**/target
+**/build
+out
+.idea
+.classpath
+.project
+.settings
+.gradle
+*.iml
