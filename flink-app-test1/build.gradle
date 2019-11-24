@@ -6,8 +6,11 @@ targetCompatibility = 1.8
 dependencies {
     compile("org.apache.flink:flink-java:$flinkVersion")
     compile("org.apache.flink:flink-streaming-java_2.11:$flinkVersion")
+    compile("org.apache.flink:flink-runtime-web_2.11:$flinkVersion")
 
     compile("org.slf4j:slf4j-log4j12:1.7.21")
+
+    compile("com.diogonunes:JCDP:2.0.3.1")
 
     compileOnly("org.projectlombok:lombok:$lombokVersion")
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")
