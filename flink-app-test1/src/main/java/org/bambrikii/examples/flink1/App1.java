@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
@@ -39,11 +38,33 @@ public class App1 {
         DataStreamSource<Model1> streamSource = env
                 .addSource(asyncTestSource);
 
-        KeyedStream<Model1, String> keyedStream = streamSource
-                .keyBy(new Model1StringKeySelector());
+        streamSource
+                .name("timestamp-and-watermark1")
+                .assignTimestampsAndWatermarks(new AssignerWithPeriodicWatermarks<Model1>() {
+                    @Override
+                    public long extractTimestamp(Model1 element, long previousElementTimestamp) {
+                        return element.getTime();
+                    }
 
-        SingleOutputStreamOperator<Object> stream = keyedStream
-                .window(TumblingEventTimeWindows.of(Time.seconds(1), Time.seconds(0)))
+                    @Nullable
+                    @Override
+                    public Watermark getCurrentWatermark() {
+                        return new Watermark((Instant.now().toEpochMilli() / 1000) * 1000 - 1000);
+                    }
+                })
+                .addSink(new SinkFunction<Model1>() {
+                    @Override
+                    public void invoke(Model1 value, Context context) {
+                        log.info(" > Process Watermarked: " + value + ", " + context.currentWatermark() + " " + context.timestamp() + " " + context.currentProcessingTime());
+                    }
+                })
+        ;
+
+        SingleOutputStreamOperator<Object> stream = streamSource
+                .name("stream-source1")
+                .keyBy(new Model1StringKeySelector())
+//                .window(SlidingEventTimeWindows.of(Time.seconds(10), Time.seconds(11)))
+                .window(TumblingEventTimeWindows.of(Time.seconds(10), Time.seconds(0)))
                 .trigger(new Trigger<Model1, TimeWindow>() {
                     @Override
                     public TriggerResult onElement(Model1 element, long timestamp, TimeWindow window, TriggerContext ctx) {
@@ -79,33 +100,13 @@ public class App1 {
                     }
                 });
 
-        streamSource
-                .assignTimestampsAndWatermarks(new AssignerWithPeriodicWatermarks<Model1>() {
+        stream
+                .addSink(new SinkFunction<Object>() {
                     @Override
-                    public long extractTimestamp(Model1 element, long previousElementTimestamp) {
-                        return element.getTime();
+                    public void invoke(Object value, Context context) {
+                        log.info(" > Sink:               " + value + ", ");
                     }
-
-                    @Nullable
-                    @Override
-                    public Watermark getCurrentWatermark() {
-                        return new Watermark((Instant.now().toEpochMilli() / 1000) * 1000 - 1000);
-                    }
-                })
-                .addSink(new SinkFunction<Model1>() {
-                    @Override
-                    public void invoke(Model1 value, Context context) {
-                        log.info(" > Process Watermarked: " + value + ", " + context.currentWatermark() + " " + context.timestamp() + " " + context.currentProcessingTime());
-                    }
-                })
-        ;
-
-        stream.addSink(new SinkFunction<Object>() {
-            @Override
-            public void invoke(Object value, Context context) {
-                log.info(" > Sink:               " + value + ", ");
-            }
-        });
+                });
 
         env.execute();
 
